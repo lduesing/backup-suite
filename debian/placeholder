@@ -1,0 +1,4 @@
+# This is an empty placeholder file.
+# It is used in .install files to ensure that dh_installdirs creates
+# necessary parent directories even if no other files are installed there
+# directly by the .install file itself (e.g., for empty plugin directories).

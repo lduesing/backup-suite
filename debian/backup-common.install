@@ -1,0 +1,13 @@
+# Files to install into the backup-common package
+# Assumes source code is in src/ relative to debian/ dir
+./configs/common_config             etc/backup/
+./plugins/common_functions.sh       opt/backup/lib/plugins/
+./plugins/README.md                 opt/backup/lib/plugins/
+# Install plugin base directory structure (empty dirs are okay)
+debian/placeholder                    opt/backup/lib/plugins/
+# Install base config directory structure
+debian/placeholder                    etc/backup/
+# Install READMEs relevant to common parts
+./configs/README.md                 usr/share/doc/backup-common/
+README.md                             usr/share/doc/backup-common/README.project
+LICENSE                               usr/share/doc/backup-common/

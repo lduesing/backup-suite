@@ -1,0 +1,12 @@
+# Files to install into the backup-server package
+# Assumes source code is in src/ relative to debian/ dir
+./backup-server/backup_server.sh        opt/backup/bin/
+./backup-server/restic_maintenance.sh   opt/backup/bin/
+./backup-server/README.md               usr/share/doc/backup-server/
+./configs/server_config.yml             etc/backup/
+# Restic password file placeholder/example (optional) - ensure empty or secured
+# debian/restic.pass.example              etc/backup/restic.pass.example
+# SSH key directory placeholder (optional) - ensure empty
+# debian/placeholder                      etc/backup/keys/
+# Systemd units are handled by dh_installsystemd in rules file
+LICENSE                                   usr/share/doc/backup-server/

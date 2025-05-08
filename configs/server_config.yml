@@ -1,0 +1,81 @@
+# ==============================================
+# Configuration for Backup Server Script (v0.1)
+# ==============================================
+# Location: /etc/backup/server_config.yml
+# Permissions: MUST be 600 owned by root
+
+# --- Global Server Settings ---
+global:
+  # Base directory on THIS server for temporary downloads and unpacking.
+  # MUST exist and be writable by root.
+  local_temp_base_dir: "/var/tmp/backup_server_work"
+
+  # Default admin email for notifications if not specified per host.
+  # Falls back to ADMIN_EMAIL from common_config if this is also missing.
+  admin_email: "server-admin+backup@example.org"
+
+  # Optional: Override path to msmtp if not in standard PATH or common_config
+  # msmtp_cmd: "/usr/bin/msmtp"
+
+  # Optional: Override path to yq if not in standard PATH or common_config
+  # yq_cmd: "/usr/local/bin/yq"
+
+# --- Restic Settings ---
+restic:
+  # Root directory containing Restic repositories (one subdirectory per host).
+  # MUST exist and be accessible/writable by the script (root).
+  repository_root: "/media/backup/restic"
+
+  # Path to the file containing the Restic repository password.
+  # Permissions MUST be 600 owned by root.
+  password_file: "/etc/backup/restic.pass"
+
+  # Optional: Override path to restic if not in standard PATH or common_config
+  # restic_cmd: "/usr/local/bin/restic"
+
+  # Optional: Additional global options for 'restic backup' command
+  # These are appended to the command line.
+  backup_options: "--compression max --exclude-if-present .backup_ignore"
+  # backup_options: ""
+
+  # Optional: Restic maintenance settings (used by restic_maintenance.sh)
+  maintenance:
+    # Forget policy arguments (space separated). Defaults used if omitted.
+    # See 'restic help forget' for options.
+    forget_policy: "--keep-daily 7 --keep-weekly 4 --keep-monthly 12 --keep-yearly 3"
+    # Run prune after forget? (true/false). Default true.
+    prune: true
+    # Run check after forget/prune? (true/false). Default true.
+    check: true
+    # Optional: Arguments for 'restic check' (e.g., "--read-data-subset 10%")
+    # check_options: "--read-data"
+
+
+# --- Host Definitions ---
+# List of client hosts to back up.
+hosts:
+    # Hostname or IP address used for SSH connection AND as the repository subdirectory name.
+  - hostname: "client-a.example.org"
+    # SSH user on the client host to connect as.
+    ssh_user: "backup-ld"
+    # Absolute path to the SSH private key file on THIS server for connecting to the client.
+    # Permissions MUST be 600 owned by root.
+    ssh_key_file: "/etc/backup/client_a_id_ed25519"
+    # Directory on the CLIENT host where the backup TAR archives are located.
+    remote_tar_dir: "/var/tmp/backups"
+    # Optional: Override global admin email for this specific host.
+    # admin_email: "admin_a@example.org"
+
+  - hostname: "client-b.example.org"
+    ssh_user: "backup-ld"
+    ssh_key_file: "/etc/backup/client_b_id_ed25519"
+    remote_tar_dir: "/var/tmp/backups"
+    # Example of overriding email per host
+    admin_email: "admin_b+backup@example.org"
+
+  # Add more hosts as needed following the same structure
+  # - hostname: "client-c.example.org"
+  #   ssh_user: "backup-fetcher"
+  #   ssh_key_file: "/etc/backup/client_c_id_rsa"
+  #   remote_tar_dir: "/mnt/backup_stage/done" # Example different path
+

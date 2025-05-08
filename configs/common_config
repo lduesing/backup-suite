@@ -1,0 +1,43 @@
+#!/bin/bash
+# Common Configuration Settings for Backup Scripts
+# Sourced by both local_backup.sh and backup_server.sh
+# Defines default paths and settings. Can be overridden by specific YAML configs.
+# Permissions: MUST be 600 owned by root. Installed to /etc/backup/common_config
+
+# --- Default Paths to External Tools ---
+# Define explicit paths if tools are not in standard PATH for root/systemd.
+# Leave empty ("") to search PATH using 'command -v'.
+# These act as defaults if not overridden in client_config.yml or server_config.yml
+YQ_CMD="${YQ_CMD:-yq}"                 # Path to yq (v4+) binary
+TAR_CMD="${TAR_CMD:-tar}"               # Path to tar binary
+RSYNC_CMD="${RSYNC_CMD:-rsync}"         # Path to rsync binary
+DOCKER_CMD="${DOCKER_CMD:-docker compose}" # Path to docker compose command
+RESTIC_CMD="${RESTIC_CMD:-restic}"       # Path to restic binary (used by server)
+MSMTP_CMD="${MSMTP_CMD:-msmtp}"         # Path to msmtp binary
+# Add other common tool paths here if needed
+PG_DUMP_CMD="${PG_DUMP_CMD:-pg_dump}"
+MYSQL_DUMP_CMD="${MYSQL_DUMP_CMD:-mysqldump}"
+SSH_CMD="${SSH_CMD:-ssh}"               # Used by server
+SCP_CMD="${SCP_CMD:-scp}"               # Used by server
+
+# --- Default Settings (can be overridden in specific configs) ---
+# Default admin email if not set in client or server specific config
+DEFAULT_ADMIN_EMAIL="admin+backup@example.org"
+# Default installation path for plugins (used by core scripts if not overridden)
+DEFAULT_PLUGIN_DIR="/opt/backup/lib/plugins"
+# Default minimum free space in MB
+DEFAULT_MIN_FREE_SPACE_MB=500
+# Default retention period in days
+DEFAULT_KEEP_DAYS=7
+
+# --- Other Common Variables or Functions (Optional) ---
+# Example: Define a shared logging prefix
+# LOG_PREFIX="MyBackupSystem"
+
+# Ensure script doesn't execute anything when sourced directly
+# The 'return 0' is good practice if this file might accidentally be executed.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "This script should be sourced, not executed directly." >&2
+    exit 1
+fi
+return 0

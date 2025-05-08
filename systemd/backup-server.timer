@@ -1,0 +1,19 @@
+[Unit]
+Description=Run Backup Server Script Daily
+Documentation=file:/etc/backup/README.md
+Requires=backup-server.service
+
+[Timer]
+# Example: Run daily at 4:00 AM (offset from client backups)
+OnCalendar=*-*-* 04:00:00
+# Add random delay up to 1 hour to spread load if multiple servers run backups
+RandomizedDelaySec=3600
+# Run job if the last scheduled time was missed (e.g., due to downtime)
+Persistent=true
+# The unit to activate when the timer elapses
+Unit=backup-server.service
+
+[Install]
+# Enable this timer to start on boot within the timers target
+WantedBy=timers.target
+

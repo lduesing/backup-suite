@@ -1,0 +1,59 @@
+#!/usr/bin/make -f
+
+# Use debhelper level 12 compatibility
+export DH_VERBOSE = 1
+export DH_OPTIONS = 
+
+#%: is a pattern rule matching any target
+%:
+	dh $@ 
+
+# Override specific debhelper commands if necessary
+# Example: Ensure scripts are executable
+override_dh_fixperms:
+	dh_fixperms
+	# Ensure main scripts are executable (adjust paths based on .install files)
+	chmod 700 debian/backup-client/opt/backup/bin/local_backup.sh || true
+	chmod 700 debian/backup-server/opt/backup/bin/backup_server.sh || true
+	chmod 700 debian/backup-server/opt/backup/bin/restic_maintenance.sh || true
+	# Ensure plugins are executable (common functions should not be)
+	if [ -d debian/backup-common/opt/backup/lib/plugins ]; then \
+		find debian/backup-common/opt/backup/lib/plugins -maxdepth 1 -name '*.sh' ! -name 'common_functions.sh' -exec chmod 700 {} \; ; \
+		if [ -f debian/backup-common/opt/backup/lib/plugins/common_functions.sh ]; then \
+			chmod 600 debian/backup-common/opt/backup/lib/plugins/common_functions.sh ; \
+		fi; \
+	fi
+	# Ensure plugins installed by client are executable
+	if [ -d debian/backup-client/opt/backup/lib/plugins ]; then \
+		find debian/backup-client/opt/backup/lib/plugins -maxdepth 1 -name '*.sh' ! -name 'common_functions.sh' -exec chmod 700 {} \; ; \
+	fi
+	# Ensure configs are only readable by root
+	chmod 600 debian/backup-common/etc/backup/client_config.yml || true
+	chmod 600 debian/backup-common/etc/backup/common_config || true
+	chmod 600 debian/backup-common/etc/backup/server_config.yml || true
+
+# Handle systemd units installation and enablement
+override_dh_installsystemd:
+override_dh_installsystemd:
+	# Create necessary directories (still important)
+	mkdir -p debian/backup-client/usr/lib/systemd/system
+	mkdir -p debian/backup-server/usr/lib/systemd/system
+	# Install service/timer files for client package
+	install -D systemd/local-backup.service debian/backup-client/usr/lib/systemd/system/local-backup.service
+	install -D systemd/local-backup.timer debian/backup-client/usr/lib/systemd/system/local-backup.timer 
+	# Install service/timer files for server package
+	install -D systemd/backup-server.service debian/backup-server/usr/lib/systemd/system/backup-server.service
+	install -D systemd/backup-server.timer debian/backup-server/usr/lib/systemd/system/backup-server.timer
+	# Install service/timer files for restic maintenance (part of server package)
+	install -D systemd/restic-maintenance.service debian/backup-server/usr/lib/systemd/system/restic-maintenance.service
+	install -D systemd/restic-maintenance.timer debian/backup-server/usr/lib/systemd/system/restic-maintenance.timer 
+	# Call dh_installsystemd for each package
+	dh_installsystemd --name=local-backup --no-start --package=backup-client 
+	dh_installsystemd --name=backup-server --no-start --package=backup-server 
+	dh_installsystemd --name=restic-maintenance --no-start --package=backup-server
+
+# Optional: Add postinst/prerm scripts if needed for setup/cleanup
+# override_dh_installdeb:
+#	dh_installdeb
+#	dh_installinit ...
+

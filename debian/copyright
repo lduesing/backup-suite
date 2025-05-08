@@ -1,0 +1,19 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: local-backup-suite
+# Source: git://git.example.org/lars/backup/ # Replace with actual URL
+Contact: Lars Duesing <lars.duesing@camelotsweb.de>
+
+Files: *
+Copyright: 2025 Lars Duesing <lars.duesing@camelotsweb.de>
+License: AGPL-3.0-or-later
+
+Files: debian/*
+Copyright: 2025 Lars Duesing <lars.duesing@camelotsweb.de>
+License: AGPL-3.0-or-later
+
+License: AGPL-3.0-or-later
+ On Debian systems, the full text of the GNU Affero General Public License v3.0
+ can be found in the file '/usr/share/common-licenses/AGPL-3'.
+ .
+ The GNU Affero General Public License is available online at:
+ <https://www.gnu.org/licenses/agpl-3.0.txt>

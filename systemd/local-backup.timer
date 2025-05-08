@@ -1,0 +1,21 @@
+[Unit]
+Description=Run Local Backup Script Daily
+Documentation=file:/etc/backup/README.md
+# Matches the Service file name
+Requires=local-backup.service 
+
+[Timer]
+# Run daily at 3:00 AM
+OnCalendar=*-*-* 03:00:00
+# Add random delay up to 1 hour to spread load
+RandomizedDelaySec=3600
+# Run job if the last scheduled time was missed
+Persistent=true
+# The unit to activate when the timer elapses
+# Matches the Service file name
+Unit=local-backup.service 
+
+[Install]
+# Enable this timer to start on boot within the timers target
+WantedBy=timers.target
+

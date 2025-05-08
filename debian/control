@@ -1,0 +1,45 @@
+Source: backup-suite
+Section: admin
+Priority: optional
+Maintainer: Lars Duesing <lars.duesing@camelotsweb.de>
+Build-Depends: debhelper-compat (= 12)
+Standards-Version: 4.5.0
+# Homepage: git://git.example.org/lars/backup/ # Replace with actual URL
+Rules-Requires-Root: no
+
+Package: backup-common
+Architecture: all
+Depends: ${misc:Depends}, bash (>= 4.4), coreutils (>= 8.30), sed, grep, findutils, util-linux (>= 2.34)
+Recommends: yq (>= 4.0)
+Description: Common configuration and libraries for local backup system
+ This package provides the shared configuration directory structure under /etc/backup,
+ the common configuration file (/etc/backup/common_config),
+ the shared function library (/opt/backup/lib/plugins/common_functions.sh),
+ and the base plugin directory (/opt/backup/lib/plugins).
+ .
+ It is required by both backup-client and backup-server packages.
+
+Package: backup-client
+Architecture: all
+Depends: ${misc:Depends}, backup-common (= ${binary:Version}), bash (>= 5.0), coreutils, sed, grep, findutils, util-linux, tar, gzip, rsync, libyaml-0-2
+Recommends: postgresql-client | mariadb-client, docker-ce-cli | docker-compose-v2 | docker-compose, msmtp | mailutils, yq (>= 4.0)
+Description: Local backup client script and plugins
+ This package installs the local_backup.sh orchestrator script, associated plugins
+ (Docker, Files, PostgreSQL), client-specific configuration files,
+ and systemd units to schedule local backups.
+ .
+ It relies on backup-common for shared configuration and libraries.
+ Service configurations (service.yaml) need to be created manually by the admin
+ under /etc/backup/.
+
+Package: backup-server
+Architecture: all
+Depends: ${misc:Depends}, backup-common (= ${binary:Version}), bash (>= 5.0), coreutils, sed, grep, findutils, util-linux, tar, gzip, openssh-client, restic (>= 0.12.0)
+Recommends: msmtp | mailutils, yq (>= 4.0)
+Description: Backup server script for fetching client backups and storing in Restic
+ This package installs the backup_server.sh script, the restic_maintenance.sh script,
+ server-specific configuration files, and systemd units to schedule backup fetching
+ and Restic repository maintenance.
+ .
+ It relies on backup-common for shared configuration and libraries.
+ Requires manual setup of SSH keys, Restic repositories, and password files.

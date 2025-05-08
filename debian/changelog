@@ -1,0 +1,5 @@
+backup-suite (0.1) unstable; urgency=medium
+
+  * Initial release of common, client, and server packages.
+
+ -- Lars Duesing <lars.duesing@camelotsweb.de>>  Thu, 01 May 2025 10:00:00 +0200

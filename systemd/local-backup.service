@@ -1,0 +1,29 @@
+[Unit]
+Description=Run Local Backup Script
+Documentation=file:/etc/backup/README.md file:/opt/backup/lib/plugins/README.md
+# Wait for network and docker (if used)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+# Path to the backup script installed by the package
+ExecStart=/opt/backup/bin/local_backup.sh
+# Set a reasonable PATH environment
+Environment="PATH=/opt/backup/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# --- Optional Resource Limits ---
+# Adjust these values based on your system's resources and requirements.
+# Incorrect values can kill the backup process or impact system performance.
+# CPUQuota=50%
+# MemoryMax=2G
+# IOReadBandwidthMax=/dev/sda 10M
+# IOWriteBandwidthMax=/dev/sda 5M
+# IOWeight=50
+
+[Install]
+# Service is not started directly, only via timer
+# WantedBy=multi-user.target # Not typically needed for timer-activated units
+

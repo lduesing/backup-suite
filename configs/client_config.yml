@@ -1,0 +1,55 @@
+# =======================================================
+# Configuration for local_backup.sh (Client - v0.1)
+# =======================================================
+# Location: /etc/backup/client_config.yml
+# Permissions: MUST be 600 owned by root.
+
+# --- General Settings ---
+# Base directory on THIS client where temporary work folders and final TAR archives are stored.
+# MUST exist and be writable by root. Admin should ensure permissions allow
+# BACKUP_USER/BACKUP_GROUP to access files if needed (e.g., 750 or 755).
+base_backup_dir: "/var/tmp/backups"
+
+# System user who should own the final TAR archive file. MUST exist.
+backup_user: "backup-ld"
+
+# System group for the final TAR archive and potentially BASE_BACKUP_DIR access. MUST exist.
+backup_group: "backup-ld" # Often same as user
+
+# Email address for sending error reports via msmtp for THIS client.
+# Overrides ADMIN_EMAIL from common_config if set.
+admin_email: "client-admin+backup@example.org"
+
+# How many days to keep old backup TAR archives on THIS client.
+# Overrides KEEP_DAYS from common_config if set. Must be positive integer.
+keep_days: 14
+
+# --- Optional Settings ---
+
+# Subject prefix for error emails from THIS client.
+# email_subject_prefix: "[Client Backup Error]"
+
+# Hostname used in error emails from THIS client.
+# Defaults to `hostname -f` if omitted.
+# hostname: "my-client.example.com"
+
+# Minimum free disk space required in base_backup_dir's filesystem (in Megabytes).
+# Overrides MIN_FREE_SPACE_MB from common_config if set. Must be non-negative integer.
+# min_free_space_mb: 1000
+
+# --- Plugin System ---
+# Directory where plugin scripts (*.sh) are located for THIS client.
+# Overrides PLUGIN_DIR from common_config if set. Must exist.
+# plugin_dir: "/opt/backup/lib/plugins" # Usually defaults are fine
+
+# --- Tool Path Overrides (Optional) ---
+# Override common tool paths specifically for this client if needed.
+# tools:
+#   yq_cmd: "/usr/bin/yq"
+#   tar_cmd: "/bin/tar"
+#   rsync_cmd: "/usr/bin/rsync"
+#   docker_cmd: "/usr/bin/docker compose"
+#   pg_dump_cmd: "/usr/bin/pg_dump"
+#   mysqldump_cmd: "/usr/bin/mysqldump"
+#   msmtp_cmd: "/usr/bin/msmtp"
+

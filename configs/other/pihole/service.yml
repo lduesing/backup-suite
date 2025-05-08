@@ -1,0 +1,32 @@
+---
+# Service Definition for local_backup.sh
+# Location: /etc/local_backup/other/pihole/service.yaml on Client
+# Permissions: MUST be 600 owned by root.
+
+service:
+  # REQUIRED: Unique name for the service
+  name: "pihole"
+  # Optional: Explicit type
+  # type: "other"
+
+# Task Type: files (handled by files_rsync.sh plugin)
+# No database or docker tasks needed for a standard Pi-hole install
+files:
+  # REQUIRED: List of important Pi-hole configuration directories/files
+  paths:
+    - "/etc/pihole/"
+    - "/etc/dnsmasq.d/"
+    # Add other relevant files if needed, e.g., customizations
+    # - "/etc/lighttpd/external.conf"
+  # Optional: List of patterns to exclude
+  exclude:
+    # Exclude potentially large or frequently changing log/database files
+    # that might be better handled differently or not backed up directly.
+    # Patterns are relative to the source base directory.
+    - "pihole-FTL.db" # The query database can get large
+    - "pihole-FTL.log"
+    - "pihole.log.*"   # Rotated logs
+    - "gravity.db"     # Can be regenerated
+    - "list.*.domains" # Can be regenerated
+    - "logrotate"      # Pi-hole's logrotate config, usually managed by package
+    - "migration_backup/" # Old backup dir

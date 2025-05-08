@@ -1,0 +1,32 @@
+[Unit]
+Description=Run Restic Maintenance (Forget/Prune/Check)
+Documentation=file:/etc/backup/README.md
+# Ensure it runs after potential backup activity and when filesystems are available
+After=backup-server.service local-fs.target remote-fs.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+# Path to the maintenance script installed by the package
+ExecStart=/opt/backup/bin/restic_maintenance.sh
+# Set environment for restic password (or pass via script)
+Environment="RESTIC_PASSWORD_FILE=/etc/backup/restic.pass"
+Environment="PATH=/opt/backup/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# --- Optional Resource Limits ---
+# Pruning and checking can be I/O and CPU intensive. Adjust as needed.
+# Limit CPU usage
+# CPUQuota=30%
+# Limit memory usage
+# MemoryMax=4G
+# Limit Disk I/O (check if supported by your kernel/systemd version)
+# IOReadBandwidthMax=/dev/your_repo_disk 50M
+# IOWriteBandwidthMax=/dev/your_repo_disk 20M # Prune writes data
+# Lower scheduling priority
+# CPUSchedulingPolicy=idle
+# IOSchedulingClass=idle
+
+[Install]
+# Service is typically started by a timer
+

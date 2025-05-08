@@ -1,0 +1,44 @@
+---
+# Service Definition for local_backup.sh
+# Location: /etc/local_backup/docker/tandoor_recipes/service.yaml on Client
+# Permissions: MUST be 600 owned by root.
+
+service:
+  # REQUIRED: Unique name for the service (used in backup path)
+  name: "tandoor_recipes"
+  # Optional: Explicitly define type if needed, otherwise derived from parent dir
+  # type: "docker"
+
+# Task Type: docker (handled by docker_compose.sh plugin)
+docker:
+  # REQUIRED: Path to the docker-compose file. Triggers stop/start.
+  docker_compose_path: "/opt/tandoor/docker-compose.yml"
+  # Optional: Seconds to wait after 'docker compose start' before proceeding.
+  # Useful if services need time to initialize. Default is 0 (no wait).
+  wait_after_restart: 30
+
+# Task Type: postgresql (handled by postgresql.sh plugin)
+postgresql:
+  # REQUIRED: Database connection details
+  host: "localhost" # Or service name / IP if DB is external to this compose stack
+  user: "tandoor"
+  database: "tandoor"
+  # PASSWORD REMOVED - Configure /root/.pgpass file instead!
+  # Optional: Port (default 5432)
+  port: 5432
+  # Optional: Extra options for pg_dump (space-separated string)
+  dump_options: "--clean --if-exists"
+
+# Task Type: files (handled by files_rsync.sh plugin)
+files:
+  # REQUIRED: List of paths to include (backup relative to basename)
+  paths:
+    - "/opt/tandoor/mediafiles/" # Example: Docker volume mount point or host path
+    - "/opt/tandoor/staticfiles/"
+    - "/opt/tandoor/config.ini" # Example config file
+  # Optional: List of rsync exclude patterns (relative to source base)
+  exclude:
+    - "cache/"           # Exclude 'cache' dir inside included dirs
+    - "*.log"            # Exclude all log files
+    - "temp_files/"      # Exclude temp dir inside included dirs
+    - "mediafiles/large_video.mp4" # Exclude specific large file relative to an include path base

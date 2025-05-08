@@ -1,0 +1,18 @@
+[Unit]
+Description=Run Restic Maintenance Weekly (Forget/Prune/Check)
+Documentation=file:/etc/backup/README.md
+Requires=restic-maintenance.service
+
+[Timer]
+# Example: Run weekly on Sunday at 5:00 AM
+OnCalendar=Sun *-*-* 05:00:00
+# Add random delay
+RandomizedDelaySec=2h
+# Run job if the last scheduled time was missed
+Persistent=true
+# The unit to activate
+Unit=restic-maintenance.service
+
+[Install]
+WantedBy=timers.target
+

@@ -1,0 +1,29 @@
+[Unit]
+Description=Run Backup Server Script to fetch client backups
+Documentation=file:/etc/backup/README.md
+# Ensure network is up, maybe local filesystems where repo/temp live are mounted
+After=network-online.target local-fs.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+# Path to the backup server script installed by the package
+ExecStart=/opt/backup/bin/backup_server.sh
+# Set a reasonable PATH environment, ensure restic/yq etc. are found
+Environment="PATH=/opt/backup/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# Optional: Set RESTIC_PASSWORD_FILE globally if not using --password-file flag
+# Environment="RESTIC_PASSWORD_FILE=/etc/backup/restic.pass"
+
+# --- Optional Resource Limits ---
+# Adjust carefully based on system resources and expected load (multiple SSH/SCP, tar, restic)
+# CPUQuota=75%
+# MemoryMax=4G
+# IOReadBandwidthMax=/dev/YOUR_DISK 50M # Limit read speed from disk
+# IOWriteBandwidthMax=/dev/YOUR_DISK 50M # Limit write speed (especially to backup repo)
+# IOWeight=100 # Default IO weight
+
+[Install]
+# Service is typically started by a timer
+
