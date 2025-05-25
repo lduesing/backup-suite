@@ -2,13 +2,14 @@
 
 This directory contains example Systemd `.service` and `.timer` unit files for automating the execution of the local backup client and the backup server scripts.
 
-## Client-Side Units
+## Client-Side Units (`local-backup.*`)
 
-* **`local-backup.service`**: Defines how to run the `/opt/backup/bin/local_backup.sh` script.
+* **`local-backup.service`**: Defines how to run `/opt/backup/bin/local_backup.sh`.
     * It's a `Type=oneshot` service, meaning it performs a single task and then exits.
     * Runs as `root`.
     * Includes commented-out examples for resource limiting (`CPUQuota`, `MemoryMax`, `IOWeight`) which can be adjusted to prevent the backup process from consuming too many system resources.
-* **`local-backup.timer`**: Defines when the `local-backup.service` should be run.
+
+* **`local-backup.timer`**: Defines when `local-backup.service` should run.
     * By default, it's configured to run daily at 3:00 AM (`OnCalendar=*-*-* 03:00:00`).
     * Includes a `RandomizedDelaySec` to spread the load if multiple clients start their backups around the same time.
     * `Persistent=true` ensures the job runs if the system was down during its scheduled time.
@@ -25,7 +26,7 @@ This directory contains example Systemd `.service` and `.timer` unit files for a
 
 ## Server-Side Units
 
-### Backup Fetching
+### Backup Fetching (`backup-server.*`)
 
 * **`backup-server.service`**: Defines how to run `/opt/backup/bin/backup_server.sh`.
     * `Type=oneshot`, runs as `root`.
@@ -42,7 +43,7 @@ This directory contains example Systemd `.service` and `.timer` unit files for a
 5.  Check status: `sudo systemctl status backup-server.timer`
 6.  View logs: `sudo journalctl -u backup-server.service`
 
-### Restic Repository Maintenance
+### Restic Repository Maintenance (`restic-maintenance.*`)
 
 * **`restic-maintenance.service`**: Defines how to run `/opt/backup/bin/restic_maintenance.sh`.
     * `Type=oneshot`, runs as `root`.
@@ -60,10 +61,24 @@ This directory contains example Systemd `.service` and `.timer` unit files for a
 6.  Check status: `sudo systemctl status restic-maintenance.timer`
 7.  View logs: `sudo journalctl -u restic-maintenance.service`
 
-## Notes
 
-* The `.service` files specify `User=root` and `Group=root`.
-* The `Environment="PATH=..."` line in the service files ensures that the scripts can find necessary executables even if run in a minimal systemd environment. The `/opt/backup/bin` path is added first.
-* Resource limits (`CPUQuota`, `MemoryMax`, `IOWeight`) are powerful but should be used with caution and tuned to your specific system and workload. Incorrectly set limits can kill the backup process or severely degrade system performance. Start without them or with very conservative values if unsure.
-* After installation via Debian packages, these files would typically be placed in `/lib/systemd/system/` by `dh_installsystemd`. Administrators can override them by placing modified copies in `/etc/systemd/system/`.
+## Notes on Resource Limits
+
+The `.service` files include commented-out examples for systemd resource limiting directives:
+
+* **`CPUQuota=`**: Limits CPU usage (e.g., `50%` for half of one core's capacity). Useful for preventing backups from starving other processes.
+* **`MemoryMax=`**: Sets a hard limit on memory usage (e.g., `2G`, `500M`). If the process exceeds this, it will be killed. Use with caution, as some backup operations (especially Restic `check` or database dumps) can be memory-intensive.
+* **`IOReadBandwidthMax=` / `IOWriteBandwidthMax=`**: Limits disk I/O bandwidth for specified block devices (e.g., `/dev/sda 10M` for 10 MB/s). This requires a newer kernel and systemd version.
+* **`IOWeight=`**: Adjusts the I/O scheduling priority (1-10000, default 100 for background tasks if `IOSchedulingClass=idle` is not set, or 1000 for `best-effort`). Lower values give lower I/O priority.
+* **`Nice=`**: Sets the process niceness level (-20 to 19, higher is "nicer" / lower priority). `Nice=10` is a common value for background tasks.
+
+**Recommendations:**
+
+1.  **Start without strict limits:** Initially, run the services without aggressive resource limits to observe their typical consumption.
+2.  **Monitor:** Use tools like `htop`, `iotop`, `systemd-cgtop` to understand CPU, memory, and I/O usage during backup runs.
+3.  **Apply Incrementally:** If backups are impacting system performance, start by setting `Nice=` (e.g., `Nice=10`) and/or `IOWeight=` (e.g., `IOWeight=100`).
+4.  **Use `CPUQuota` and `MemoryMax` with caution:** These can kill the backup process if set too low. `MemoryMax` is particularly risky for Restic operations on large repositories.
+5.  **Test:** After applying limits, thoroughly test backup runs to ensure they complete successfully and within acceptable timeframes.
+
+Adjust these settings based on your specific hardware, workload, and how critical immediate system responsiveness is during backup windows.
 

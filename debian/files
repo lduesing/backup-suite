@@ -1,0 +1,4 @@
+backup-client_0.2_all.deb admin optional
+backup-common_0.2_all.deb admin optional
+backup-server_0.2_all.deb admin optional
+backup-suite_0.2_amd64.buildinfo admin optional

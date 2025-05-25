@@ -1,3 +1,9 @@
+backup-suite (0.2) unstable; urgency=medium
+
+  * Many new things.
+
+ -- Lars Duesing <lars.duesing@camelotsweb.de>>  Thu, 22 May 2025 19:55:00 +0200
+
 backup-suite (0.1) unstable; urgency=medium
 
   * Initial release of common, client, and server packages.

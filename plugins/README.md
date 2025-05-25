@@ -1,81 +1,154 @@
-# Local Backup Script - Plugin Documentation
+# Backup Plugins User Guide
 
-This document describes the interface and expectations for plugin scripts used by the `local_backup.sh` core orchestrator.
+**Version:** 0.2
+**Date:** May 25, 2025
 
-## Overview
+This document describes the available standard plugins for the `local_backup.sh` client script and how to configure them using `service.yaml` files.
 
-Plugins are executable shell scripts (`*.sh`) located in the directory defined by `PLUGIN_DIR` in the central `config` file (default: `/opt/backup/lib/plugins`). They perform specific backup-related tasks for services defined in `service.yaml` files.
+## Table of Contents
 
-The core script discovers plugins and calls standardized functions within them at different stages (Validate, Prepare, Run, Post-Success) based on a **simplified dependency order** (Docker stop first, start last). Configuration parameters are passed via **temporary files**, and state between plugin operations (like Docker stop/start) is managed via **state files**.
+1.  [General Plugin Configuration](#1-general-plugin-configuration)
+2.  [Available Plugins](#2-available-plugins)
+    * [2.1 `docker_compose.sh` (Task: `docker`)](#21-docker_composesh-task-docker)
+    * [2.2 `postgresql.sh` (Task: `postgresql`)](#22-postgresqlsh-task-postgresql)
+    * [2.3 `mariadb.sh` (Task: `mariadb`)](#23-mariadbsh-task-mariadb)
+    * [2.4 `files_rsync.sh` (Task: `files`)](#24-files_rsyncsh-task-files)
+3.  [Configuration Examples](#3-configuration-examples)
+    * [3.1 Example 1: Simple Web App (Docker + PostgreSQL)](#31-example-1-simple-web-app-docker--postgresql)
+    * [3.2 Example 2: File Server](#32-example-2-file-server)
+4.  [Plugin Locations and Extensibility](#4-plugin-locations-and-extensibility)
 
-## Plugin Discovery
+## 1. General Plugin Configuration
 
-The core script finds all files ending in `.sh` (excluding `common_functions.sh`) within the `PLUGIN_DIR` that have execute permissions (`+x`) set.
+Plugins are configured on a per-service basis within `service.yaml` files located under `/etc/backup/`. The core script (`local_backup.sh`) scans these directories, finds `service.yaml` files, and processes them.
 
-## Plugin Interface Functions
+Each `service.yaml` file **must** contain a `service.name` key for identification. It then contains one or more "task blocks". The key for each task block (e.g., `docker:`, `files:`) tells the core script which plugin to call. The content under that key provides the specific configuration for that plugin's task for that service.
 
-Each plugin script **must** be executable and **should** define a specific set of functions. The core script sources plugins within subshells `( ... )` to execute these functions. Logging functions (`log_info`, `log_error`, `log_detail`) and potentially other helpers like `check_perms` are expected to be available (sourced from `common_functions.sh`). All functions should return `0` on success and a non-zero value on failure. Use `local` for variables inside functions. Adhere to Google Shell Style Guide (lowercase variables/functions).
+``` yaml
+# General structure of /etc/backup/<category>/<service_name>/service.yaml
+service:
+  name: "MyUniqueServiceName" # Used in logs and backup paths
 
-### Required Functions:
+# --- Task Blocks Follow ---
 
-1.  **`plugin_handles_task_type "$task_type"`**
-    * **Purpose:** Indicate if this plugin handles a specific task type key from `service.yaml`.
-    * **Args:** `$1` = Task type string (e.g., "postgresql", "docker", "files").
-    * **Returns:** Exit code `0` if handled, `1` otherwise.
+plugin_task_key_1: # e.g., 'docker'
+  parameter1: "value1"
+  parameter2: 123
 
-2.  **`plugin_validate_config "$temp_config_file"`**
-    * **Purpose:** Validate the configuration structure/values provided for its task type within the `service.yaml`.
-    * **Args:** `$1` = Path to a temporary file containing the relevant YAML section (e.g., content under `postgresql:`) extracted by the core script using `yq`.
-    * **Behavior:** Use `yq` (path in global `$YQ_CMD`) to parse config from `$1`. Check keys, values, formats, dependencies (commands). Use `log_error` for failures.
-    * **Returns:** Exit code `0` if valid, non-zero otherwise.
+plugin_task_key_2: # e.g., 'files'
+  paths:
+    - "/path/to/backup_1"
+    - "/path/to/backup_2"
+  exclude:
+    - "*.log"
+```
 
-3.  **`plugin_run_backup "$temp_config_file" "$service_config_dir" "$service_backup_dir"`**
-    * **Purpose:** Execute the main backup logic.
-    * **Args:**
-        * `$1`: Path to temp file containing plugin's config section from YAML.
-        * `$2`: Path to the directory containing `service.yaml`.
-        * `$3`: Path to the service's temporary backup destination directory (e.g., `$WORK_DIR/<type>/<service>`). Write output here.
-    * **Dry Run:** Check global environment variable `DRY_RUN_MODE`. If `1`, log intended actions instead of performing them. (`DRY_RUN_MODE` is exported by the core script before calling).
-    * **Returns:** `0` on success, non-zero on failure.
+## 2. Available Plugins
 
-### Optional Functions:
+The following plugins are typically provided as part of the `backup-client` package and installed to `/opt/backup/lib/plugins/`.
 
-4.  **`plugin_prepare_backup "$temp_config_file" "$service_config_dir" "$service_backup_dir"`**
-    * **Purpose:** Perform actions *before* `plugin_run_backup` (e.g., stop a service). Core script runs Docker prepare first, then others.
-    * **Args:** Same as `run_backup`. Checks `DRY_RUN_MODE`.
-    * **State Management:** If system state is changed, MUST create state file(s) in `$3/.state/` (e.g., `touch "$3/.state/docker_stopped"`). Dir/files should be `700`/`600`. Store context needed for reversal in state files (e.g., `$3/.state/docker_context`). State directory (`.state`) is created by the core script.
-    * **Returns:** `0` on success. Failure aborts the service backup.
+### 2.1 `docker_compose.sh` (Task: `docker`)
 
-5.  **`plugin_post_backup_success "$temp_config_file" "$service_config_dir" "$service_backup_dir"`**
-    * **Purpose:** Perform actions *after* successful `run_backup`, typically reversing `prepare` actions (e.g., start a service, optional wait). Core script runs others first, then Docker last.
-    * **Called By Core:** Only if the function exists AND `plugin_prepare_backup` was called and succeeded for this plugin.
-    * **Args:** Same as `run_backup`. Checks `DRY_RUN_MODE`.
-    * **State Management:** Should check for state file(s) created by `prepare`. If found, perform reversal. **Must remove the state file(s)** upon successful completion.
-    * **Returns:** `0` on success. Failure aborts the entire backup script run.
+* **Purpose:** Manages Docker Compose services during backup. It can stop services before other plugins run and restart them afterwards. It can also back up the `docker-compose.yml` file itself and optionally pin service images to their current SHA256 digest in the backup.
+* **Task Key:** `docker`
+* **Configuration Parameters:**
+    * `compose_file` (Mandatory): String. The absolute path to the `docker-compose.yml` file for this service.
+    * `project_directory` (Optional): String. The directory where `docker compose` commands should be executed. If not provided, it defaults to the directory containing the `compose_file`.
+    * `stop_services` (Optional): Boolean (`true` or `false`). Whether to stop the services before backup. Defaults to `true`. If `false`, only config/pinning is done.
+    * `stop_wait_seconds` (Optional): Integer. How many seconds to wait after stopping services to allow them to shut down gracefully. Defaults to `15`.
+    * `backup_config` (Optional): Boolean (`true` or `false`). Whether to copy the `compose_file` into the backup. Defaults to `true`.
+    * `pin_images` (Optional): Boolean (`true` or `false`). Whether to resolve service image tags to their current SHA256 digests and save them to a `docker-compose.pinned.yml` file within the backup. Defaults to `false`.
 
-6.  **`plugin_emergency_cleanup "$service_backup_dir"`**
-    * **Purpose:** Critical cleanup/reversal if script exits unexpectedly *after* `prepare` might have run but *before* `post_success` completed successfully.
-    * **Called By Core:** From the main script's EXIT trap for each service directory containing a `.state` subdirectory.
-    * **Args:** `$1`: Absolute path to the service's temporary backup directory (may not exist).
-    * **Behavior:** Check for its specific state file(s) (e.g., `$1/.state/docker_stopped`). If found, attempt reversal (read context, run command, `sleep`). Log actions clearly using `_log_base ... >> "$TMP_LOG_FILE"` (global variable from core) and `echo ... >&2`. **Remove state file(s) *only* if reversal succeeds.** Checks `DRY_RUN_MODE`.
-    * **Returns:** Should ideally return `0` even on failure.
+### 2.2 `postgresql.sh` (Task: `postgresql`)
 
-## Included Example Plugins
+* **Purpose:** Dumps a PostgreSQL database using `pg_dump`. It creates an **uncompressed** SQL file.
+* **Task Key:** `postgresql`
+* **Configuration Parameters:**
+    * `database` (Mandatory): String. The name of the database to dump.
+    * `username` (Optional): String. The username to connect to the database. If not provided, it uses the default (often the OS user, i.e., `root`).
+    * `hostname` (Optional): String. The database host. Defaults to `localhost` (uses local socket if possible).
+    * `port` (Optional): Integer. The database port. Defaults to `5432`.
+    * `dump_options` (Optional): String. Any additional command-line options to pass directly to `pg_dump`.
+* **Authentication:** This plugin relies on standard PostgreSQL authentication methods, primarily **`/root/.pgpass`**. Ensure this file exists, contains the correct password(s), and has `600 root:root` permissions. **Do not put passwords in `service.yaml`!**
+    ``` text
+    # Example /root/.pgpass entry
+    # hostname:port:database:username:password
+    localhost:5432:webapp_db:webapp_user:YourSecretPassword
+    ```
 
-*(Located in the directory specified by `PLUGIN_DIR`)*
+### 2.3 `mariadb.sh` (Task: `mariadb`)
 
-* **`common_functions.sh`:** Provides shared logging and `check_perms` functions. Not executable. Sourced.
-* **`docker_compose.sh`:** Handles `docker` task type. Requires `docker_compose_path`. Optional `wait_after_restart`. Uses state files. Handles dry-run.
-* **`files_rsync.sh`:** Handles `files` task type. Requires `paths:` list. Optional `exclude:` list. Runs `rsync`. Handles dry-run.
-* **`postgresql.sh`:** Handles `postgresql` task type. Requires `host`, `user`, `database`. Optional `port`, `dump_options`. Requires `/root/.pgpass`. Handles dry-run.
-* **`mariadb.sh`:** Handles `mariadb` or `mysql` task type. Requires `host`, `user`, `database`. Optional `port`, `dump_options`. Requires `/root/.my.cnf`. Handles dry-run.
-* **`influxdb.sh`:** Handles `influxdb` task type (for v2+). Requires `host`, `token`, `org`. Optional `bucket`. Requires `influx` CLI. Handles dry-run.
+* **Purpose:** Dumps a MariaDB/MySQL database using `mysqldump`. It creates an **uncompressed** SQL file.
+* **Task Key:** `mariadb`
+* **Configuration Parameters:**
+    * `database` (Mandatory): String. The name of the database to dump.
+    * `username` (Optional): String. The username to connect. Defaults to `root`.
+    * `hostname` (Optional): String. The database host. Defaults to `localhost`.
+    * `port` (Optional): Integer. The database port. Defaults to `3306`.
+    * `dump_options` (Optional): String. Any additional command-line options to pass directly to `mysqldump` (e.g., `"--single-transaction"`).
+* **Authentication:** This plugin relies on standard MariaDB/MySQL authentication, primarily **`/root/.my.cnf`**. Ensure this file exists and contains credentials in a `[client]` or `[mysqldump]` section with `600 root:root` permissions.
+    ``` ini
+    # Example /root/.my.cnf entry
+    [mysqldump]
+    user=backup_user
+    password=YourSecretPassword
+    host=localhost
+    ```
 
-## Creating New Plugins
+### 2.4 `files_rsync.sh` (Task: `files`)
 
-1.  Create `your_plugin_name.sh` in `PLUGIN_DIR`. Make executable (`700`).
-2.  Source `common_functions.sh`.
-3.  Implement required functions. Read config from temp file path `$1` using `${YQ_CMD}`.
-4.  Implement optional functions if needed, using state files in `$service_backup_dir/.state/`. Handle `DRY_RUN_MODE`.
-5.  Define the YAML task type key and parameters. Document them.
+* **Purpose:** Backs up specified files and directories using `rsync`. It preserves permissions, ownership, and relative paths.
+* **Task Key:** `files`
+* **Configuration Parameters:**
+    * `paths` (Mandatory): A YAML list of strings, where each string is an absolute path to a file or directory to back up.
+    * `exclude` (Optional): A YAML list of strings, where each string is a pattern to exclude (passed to `rsync --exclude`).
+    * `rsync_options` (Optional): String. Any additional command-line options to pass directly to `rsync` (e.g., `"--acls --xattrs"`).
 
+## 3. Configuration Examples
+
+### 3.1 Example 1: Simple Web App (Docker + PostgreSQL)
+
+* **File:** `/etc/backup/docker/my_webapp/service.yaml`
+    ``` yaml
+    service:
+      name: "MyWebAppService"
+
+    docker:
+      compose_file: "/opt/my_webapp/docker-compose.yml"
+      stop_wait_seconds: 20
+      pin_images: true
+
+    postgresql:
+      database: "my_webapp_db"
+      username: "webapp_backup_user" # Ensure .pgpass is set up
+
+    files:
+      paths:
+        - "/etc/nginx/sites-available/my_webapp.conf"
+        - "/etc/letsencrypt/live/my_webapp.example.com/"
+      exclude:
+        - ".*" # Exclude hidden files
+    ```
+
+### 3.2 Example 2: File Server
+
+* **File:** `/etc/backup/files/shared_data/service.yaml`
+    ``` yaml
+    service:
+      name: "SharedDataBackup"
+
+    files:
+      paths:
+        - "/srv/shares/public/"
+        - "/srv/shares/private/"
+      exclude:
+        - "**/Thumbs.db"
+        - "**/*.tmp"
+        - "lost+found/"
+    ```
+
+## 4. Plugin Locations and Extensibility
+
+* **Standard Location:** `/opt/backup/lib/plugins/`
+* **Custom Plugins:** You can create your own plugins by following the specifications in `CONTRIBUTING.md`. Place them in the standard plugin directory, or configure a custom directory using the `plugin_dir` setting in `/etc/backup/client_config.yml`.
+* **Common Functions:** All plugins rely on `/opt/backup/lib/plugins/common_functions.sh` for logging and utility functions.

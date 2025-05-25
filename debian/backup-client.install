@@ -1,16 +1,17 @@
 # Files to install into the backup-client package
-# Assumes source code is in src/ relative to debian/ dir
-./backup-client/local_backup.sh     opt/backup/bin/
-./backup-client/README.md           usr/share/doc/backup-client/
-./configs/client_config.yml         etc/backup/
+backup-client/local_backup.sh     opt/backup/bin/
+backup-client/README.md           usr/share/doc/backup-client/
+configs/client_config.yml         etc/backup/
 # Install plugins needed by the client
-./plugins/docker_compose.sh         opt/backup/lib/plugins/
-./plugins/files_rsync.sh            opt/backup/lib/plugins/
-./plugins/postgresql.sh             opt/backup/lib/plugins/
-./plugins/mariadb.sh                opt/backup/lib/plugins/
-./plugins/influxdb.sh               opt/backup/lib/plugins/
+plugins/docker_compose.sh         opt/backup/lib/plugins/
+plugins/files_rsync.sh            opt/backup/lib/plugins/
+plugins/postgresql.sh             opt/backup/lib/plugins/
+plugins/mariadb.sh                opt/backup/lib/plugins/
+plugins/influxdb.sh               opt/backup/lib/plugins/
+plugins/univention.sh             opt/backup/lib/plugins/
 # Example service config directories (optional - admin should customize)
-# src/configs/docker                  etc/backup/examples/
-# src/configs/other                   etc/backup/examples/
-# Systemd units are handled by dh_installsystemd in rules file
-LICENSE                               usr/share/doc/backup-client/
+# ../configs/docker                  etc/backup/examples/
+# ../configs/other                   etc/backup/examples/
+# Systemd units are handled by dh_installsystemd in rules file, sourced from ../systemd/
+LICENSE                            usr/share/doc/backup-client/
+
